@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
@@ -17,9 +17,9 @@ public class GameManager : MonoBehaviour
 
     [Header("Temporizador de rondas")]
     public float duracionRonda = 10f;
-    public Text textoTiempo;
-    public Text textoRonda;
-    public Text textoPuntaje;
+    public TextMeshProUGUI textoTiempo;
+    public TextMeshProUGUI textoRonda;
+    public TextMeshProUGUI textoPuntaje;
 
     private float tiempoRestante;
     private int numeroRonda = 1;
@@ -32,21 +32,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        tiempoRestante = duracionRonda;
-
-        for (int i = 0; i < cantidadCelulas; i++)
-        {
-            Vector3 posicion = new Vector3(
-                Random.Range(-limiteX, limiteX),
-                Random.Range(-limiteY, limiteY),
-                0f
-            );
-            Celula nueva = Instantiate(prefabCelula, posicion, Quaternion.identity);
-            celulas.Add(nueva);
-            nueva.NuevaRonda();
-        }
-
-        ActualizarUI();
+        CrearCelulasIniciales();
+        IniciarRonda();
     }
 
     void Update()
@@ -55,30 +42,61 @@ public class GameManager : MonoBehaviour
 
         if (tiempoRestante <= 0f)
         {
-            NuevaRonda();
+            SiguienteRonda();
         }
 
         ActualizarUI();
     }
 
-    void NuevaRonda()
+    // Instancia las células ÚNICAMENTE una vez al iniciar el juego
+    void CrearCelulasIniciales()
     {
-        numeroRonda++;
+        for (int i = 0; i < cantidadCelulas; i++)
+        {
+            Vector3 posicion = ObtenerPosicionAleatoria();
+            Celula nueva = Instantiate(prefabCelula, posicion, Quaternion.identity);
+            celulas.Add(nueva);
+        }
+    }
+
+    void IniciarRonda()
+    {
         tiempoRestante = duracionRonda;
 
-        foreach (Celula celula in celulas)
+        // En lugar de destruir, reposicionamos y actualizamos las células existentes
+        foreach (Celula c in celulas)
         {
-            celula.NuevaRonda();
+            if (c != null)
+            {
+                c.transform.position = ObtenerPosicionAleatoria();
+                c.NuevaRonda(); // Mantiene su memoria de aprendizaje y tamaño
+            }
         }
 
+        ActualizarUI();
+    }
+
+    void SiguienteRonda()
+    {
+        numeroRonda++;
         Debug.Log("Nueva ronda: " + numeroRonda);
+        IniciarRonda();
+    }
+
+    Vector3 ObtenerPosicionAleatoria()
+    {
+        return new Vector3(
+            Random.Range(-limiteX, limiteX),
+            Random.Range(-limiteY, limiteY),
+            0f
+        );
     }
 
     void ActualizarUI()
     {
         if (textoTiempo != null)
         {
-            textoTiempo.text = Mathf.CeilToInt(tiempoRestante).ToString();
+            textoTiempo.text = "Tiempo: " + Mathf.CeilToInt(tiempoRestante).ToString();
         }
 
         if (textoRonda != null)
@@ -88,7 +106,7 @@ public class GameManager : MonoBehaviour
 
         if (textoPuntaje != null)
         {
-            textoPuntaje.text = "Score: " + celulasEliminadas;
+            textoPuntaje.text = "Células Eliminadas: " + celulasEliminadas;
         }
     }
 

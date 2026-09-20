@@ -4,22 +4,33 @@ using UnityEngine;
 public class Celula : MonoBehaviour
 {
     [Header("Parámetros de la célula")]
-    public float tamano = 1f;
+    public float tamanoInicial = 1f;
+    public float tamanoMinimo = 0.2f;
+    [Range(0.5f, 0.99f)]
+    public float factorReduccionTamano = 0.90f; // Se encoge 10% por ronda que sobrevive
+    private float tamanoActual;
 
-    [Header("Aprendizaje por refuerzo")]
+    [Header("Aprendizaje por Refuerzo")]
+    // Lista de colores para mimetismo progresivo
     public Color[] coloresPosibles = new Color[]
     {
-        Color.red, Color.green, Color.blue, Color.yellow, Color.white
+        Color.red,
+        Color.yellow,
+        Color.white,
+        new Color(0.10f, 0.60f, 0.80f, 1f), // Celeste (visible pero azulado)
+        new Color(0.15f, 0.25f, 0.45f, 1f), // Azul marino
+        new Color(0.20f, 0.32f, 0.51f, 1f)  // Tono similar al fondo (#335383)
     };
+
     [Range(0f, 1f)]
-    public float epsilon = 0.3f;
+    public float epsilon = 0.5f; // Mayor exploración al inicio
     public float epsilonMinimo = 0.01f;
     [Range(0f, 1f)]
-    public float factorDecaimiento = 0.85f;
+    public float factorDecaimiento = 0.80f;
 
     [Header("Eliminación de colores malos")]
-    public int rondaMinimaAntesDeEliminar = 5;
-    public float margenEliminacion = 2f;
+    public int rondaMinimaAntesDeEliminar = 2;
+    public float margenEliminacion = 1f;
 
     private float[] puntajes;
     private bool[] colorActivo;
@@ -33,18 +44,31 @@ public class Celula : MonoBehaviour
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+        tamanoActual = tamanoInicial;
+
         puntajes = new float[coloresPosibles.Length];
         colorActivo = new bool[coloresPosibles.Length];
+
         for (int i = 0; i < colorActivo.Length; i++)
         {
             colorActivo[i] = true;
         }
     }
 
+    void Start()
+    {
+        colorActualIndice = Random.Range(0, coloresPosibles.Length);
+        AplicarParametros();
+    }
+
     public void AplicarParametros()
     {
-        spriteRenderer.color = coloresPosibles[colorActualIndice];
-        transform.localScale = new Vector3(tamano, tamano, 1f);
+        if (spriteRenderer != null && coloresPosibles.Length > 0)
+        {
+            spriteRenderer.color = coloresPosibles[colorActualIndice];
+        }
+
+        transform.localScale = new Vector3(tamanoActual, tamanoActual, 1f);
     }
 
     public void NuevaRonda()
@@ -52,6 +76,7 @@ public class Celula : MonoBehaviour
         if (haHechoPrimeraRonda && !fueDetectada)
         {
             puntajes[colorActualIndice] += 1f;
+            tamanoActual = Mathf.Max(tamanoMinimo, tamanoActual * factorReduccionTamano);
         }
 
         fueDetectada = false;
@@ -119,6 +144,8 @@ public class Celula : MonoBehaviour
             }
         }
 
+        if (candidatos.Count == 0) return ColorActivoAlAzar();
+
         return candidatos[Random.Range(0, candidatos.Count)];
     }
 
@@ -130,6 +157,8 @@ public class Celula : MonoBehaviour
             if (colorActivo[i]) activos.Add(i);
         }
 
+        if (activos.Count == 0) return 0;
+
         return activos[Random.Range(0, activos.Count)];
     }
 
@@ -137,7 +166,12 @@ public class Celula : MonoBehaviour
     {
         fueDetectada = true;
         puntajes[colorActualIndice] -= 1f;
-        GameManager.Instancia.RegistrarEliminacion();
+
+        if (GameManager.Instancia != null)
+        {
+            GameManager.Instancia.RegistrarEliminacion();
+        }
+
         gameObject.SetActive(false);
     }
 }
