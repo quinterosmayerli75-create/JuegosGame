@@ -1,171 +1,112 @@
-using System.Collections.Generic;
 using UnityEngine;
 
+// =====================================================================
+// CELULA (galleta)
+// Cada galleta es un agente que aprende a sobrevivir a los clics del
+// jugador. Toma DOS decisiones cada ronda, cada una con su propio
+// "cerebro" (clase Aprendiz, bandido multibrazo epsilon-greedy):
+//   1) Qué galleta ser  -> su color / apariencia
+//   2) Qué tamaño tener -> entre un mínimo y un máximo
+// =====================================================================
 public class Celula : MonoBehaviour
 {
-    [Header("Parámetros de la célula")]
-    public float tamanoInicial = 1f;
-    public float tamanoMinimo = 0.2f;
-    [Range(0.5f, 0.99f)]
-    public float factorReduccionTamano = 0.90f; // Se encoge 10% por ronda que sobrevive
-    private float tamanoActual;
+    [Header("Galletas posibles (color / apariencia)")]
+    public Sprite[] galletasPosibles;
 
-    [Header("Aprendizaje por Refuerzo")]
-    // Lista de colores para mimetismo progresivo
-    public Color[] coloresPosibles = new Color[]
-    {
-        Color.red,
-        Color.yellow,
-        Color.white,
-        new Color(0.10f, 0.60f, 0.80f, 1f), // Celeste (visible pero azulado)
-        new Color(0.15f, 0.25f, 0.45f, 1f), // Azul marino
-        new Color(0.20f, 0.32f, 0.51f, 1f)  // Tono similar al fondo (#335383)
-    };
+    [Header("Tamaños posibles (límites mínimo y máximo)")]
+    public float tamanoMinimo = 0.8f;
+    public float tamanoMaximo = 2.0f;
+    [Range(2, 10)]
+    public int cantidadTamanos = 5; // Divide el rango en N opciones
 
+    [Header("Exploración (epsilon-greedy)")]
     [Range(0f, 1f)]
-    public float epsilon = 0.5f; // Mayor exploración al inicio
-    public float epsilonMinimo = 0.01f;
+    public float epsilon = 0.3f;            // Probabilidad inicial de explorar
+    public float epsilonMinimo = 0.01f;     // Nunca deja de explorar del todo
     [Range(0f, 1f)]
-    public float factorDecaimiento = 0.80f;
+    public float factorDecaimiento = 0.85f; // Cada ronda explora un poco menos
 
-    [Header("Eliminación de colores malos")]
-    public int rondaMinimaAntesDeEliminar = 2;
-    public float margenEliminacion = 1f;
+    [Header("Descarte de opciones malas")]
+    public int intentosMinimosParaDescartar = 3;
+    [Range(0f, 1f)]
+    public float margenDescarte = 0.4f;
 
-    private float[] puntajes;
-    private bool[] colorActivo;
-    private int colorActualIndice = 0;
-    private bool fueDetectada = false;
+    // Los dos "cerebros" de la célula
+    private Aprendiz aprendizGalleta;
+    private Aprendiz aprendizTamano;
+
+    private bool fueDetectada = false;       // ¿El jugador la eliminó esta ronda?
     private bool haHechoPrimeraRonda = false;
-    private int rondaActual = 0;
-
     private SpriteRenderer spriteRenderer;
 
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        tamanoActual = tamanoInicial;
 
-        puntajes = new float[coloresPosibles.Length];
-        colorActivo = new bool[coloresPosibles.Length];
-
-        for (int i = 0; i < colorActivo.Length; i++)
-        {
-            colorActivo[i] = true;
-        }
-    }
-
-    void Start()
-    {
-        colorActualIndice = Random.Range(0, coloresPosibles.Length);
+        aprendizGalleta = new Aprendiz(galletasPosibles.Length, epsilon, epsilonMinimo,
+                                       factorDecaimiento, intentosMinimosParaDescartar, margenDescarte);
+        aprendizTamano = new Aprendiz(cantidadTamanos, epsilon, epsilonMinimo,
+                                      factorDecaimiento, intentosMinimosParaDescartar, margenDescarte);
         AplicarParametros();
     }
 
-    public void AplicarParametros()
+    // Convierte el número de opción (0, 1, 2...) en un tamaño real
+    // repartido de forma pareja entre el mínimo y el máximo.
+    // Ej: min 0.8, max 2.0, 5 opciones -> 0.8, 1.1, 1.4, 1.7, 2.0
+    private float TamanoDeOpcion(int opcion)
     {
-        if (spriteRenderer != null && coloresPosibles.Length > 0)
-        {
-            spriteRenderer.color = coloresPosibles[colorActualIndice];
-        }
-
-        transform.localScale = new Vector3(tamanoActual, tamanoActual, 1f);
+        float t = (float)opcion / (cantidadTamanos - 1);
+        return Mathf.Lerp(tamanoMinimo, tamanoMaximo, t);
     }
 
+    // Le pone a la célula la galleta y el tamaño que eligieron sus cerebros.
+    public void AplicarParametros()
+    {
+        if (spriteRenderer != null && galletasPosibles.Length > 0)
+        {
+            spriteRenderer.sprite = galletasPosibles[aprendizGalleta.OpcionActual];
+            spriteRenderer.color = Color.white;
+        }
+
+        float tamano = TamanoDeOpcion(aprendizTamano.OpcionActual);
+        transform.localScale = new Vector3(tamano, tamano, 1f);
+    }
+
+    // El GameManager la llama al terminar cada ronda.
     public void NuevaRonda()
     {
-        if (haHechoPrimeraRonda && !fueDetectada)
+        // La primera llamada ocurre al iniciar el juego: aún no hay nada que aprender
+        if (haHechoPrimeraRonda)
         {
-            puntajes[colorActualIndice] += 1f;
-            tamanoActual = Mathf.Max(tamanoMinimo, tamanoActual * factorReduccionTamano);
+            bool sobrevivio = !fueDetectada;
+
+            // Los dos cerebros aprenden del MISMO resultado
+            aprendizGalleta.RegistrarYElegir(sobrevivio);
+            aprendizTamano.RegistrarYElegir(sobrevivio);
         }
 
         fueDetectada = false;
         haHechoPrimeraRonda = true;
-        rondaActual++;
 
-        epsilon = Mathf.Max(epsilonMinimo, epsilon * factorDecaimiento);
-
-        if (rondaActual >= rondaMinimaAntesDeEliminar)
-        {
-            EliminarColoresMalos();
-        }
-
-        colorActualIndice = ElegirColor();
         AplicarParametros();
-        gameObject.SetActive(true);
+        gameObject.SetActive(true); // Reaparece aunque la hayan eliminado
     }
 
-    private void EliminarColoresMalos()
+    // Tablas de aprendizaje en texto (para mostrarlas en la consola)
+    public string ResumenAprendizaje()
     {
-        float mejor = MejorPuntajeActivo();
-
-        for (int i = 0; i < puntajes.Length; i++)
-        {
-            if (colorActivo[i] && puntajes[i] < mejor - margenEliminacion)
-            {
-                colorActivo[i] = false;
-            }
-        }
+        return "Galletas: " + aprendizGalleta.Resumen() + "\nTamaños: " + aprendizTamano.Resumen();
     }
 
-    private float MejorPuntajeActivo()
-    {
-        float mejor = float.MinValue;
-        for (int i = 0; i < puntajes.Length; i++)
-        {
-            if (colorActivo[i] && puntajes[i] > mejor)
-            {
-                mejor = puntajes[i];
-            }
-        }
-        return mejor;
-    }
-
-    private int ElegirColor()
-    {
-        if (Random.value < epsilon)
-        {
-            return ColorActivoAlAzar();
-        }
-
-        return MejorColorActivo();
-    }
-
-    private int MejorColorActivo()
-    {
-        float mejor = MejorPuntajeActivo();
-
-        List<int> candidatos = new List<int>();
-        for (int i = 0; i < puntajes.Length; i++)
-        {
-            if (colorActivo[i] && puntajes[i] == mejor)
-            {
-                candidatos.Add(i);
-            }
-        }
-
-        if (candidatos.Count == 0) return ColorActivoAlAzar();
-
-        return candidatos[Random.Range(0, candidatos.Count)];
-    }
-
-    private int ColorActivoAlAzar()
-    {
-        List<int> activos = new List<int>();
-        for (int i = 0; i < colorActivo.Length; i++)
-        {
-            if (colorActivo[i]) activos.Add(i);
-        }
-
-        if (activos.Count == 0) return 0;
-
-        return activos[Random.Range(0, activos.Count)];
-    }
-
+    // El jugador hizo clic: la célula "muere" hasta la próxima ronda.
     void OnMouseDown()
     {
         fueDetectada = true;
-        puntajes[colorActualIndice] -= 1f;
+
+        if (AudioManager.Instancia != null)
+        {
+            AudioManager.Instancia.SonarMordida();
+        }
 
         if (GameManager.Instancia != null)
         {

@@ -69,7 +69,8 @@ public class GameManager : MonoBehaviour
             if (c != null)
             {
                 c.transform.position = ObtenerPosicionAleatoria();
-                c.NuevaRonda(); // Mantiene su memoria de aprendizaje y tamaño
+                c.NuevaRonda(); // Mantiene su memoria de aprendizaje
+                Debug.Log(c.name + "\n" + c.ResumenAprendizaje());
             }
         }
 
@@ -79,6 +80,10 @@ public class GameManager : MonoBehaviour
     void SiguienteRonda()
     {
         numeroRonda++;
+        if (AudioManager.Instancia != null)
+        {
+            AudioManager.Instancia.SonarRonda();
+        }
         Debug.Log("Nueva ronda: " + numeroRonda);
         IniciarRonda();
     }
