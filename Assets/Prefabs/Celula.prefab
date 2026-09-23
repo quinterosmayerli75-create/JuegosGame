@@ -46,18 +46,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dcf3fda81e8ade741acc8a5848b2addc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Celula
-  tamano: 1
-  coloresPosibles:
-  - {r: 1, g: 0, b: 0, a: 1}
-  - {r: 0, g: 1, b: 0, a: 1}
-  - {r: 0, g: 0, b: 1, a: 1}
-  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  - {r: 1, g: 1, b: 1, a: 1}
+  galletasPosibles:
+  - {fileID: 6229064360165208720, guid: 9ea837f72c7151046b26e6a720896ff9, type: 3}
+  - {fileID: 2193378693456512474, guid: 6feed4450b383014ab9834830d854d57, type: 3}
+  - {fileID: -7368679135930533494, guid: a18c103cb19bbc64f8a3fa72f695fa40, type: 3}
+  - {fileID: -8146284911712095919, guid: 1b9559025eefd234fbb69777d0546c5d, type: 3}
+  - {fileID: -7080911518020510861, guid: 9bcd901565e95aa4da93ad968fbed64c, type: 3}
+  - {fileID: -2362009333158346002, guid: 39fa1dd66ec2bb144a889cea7c026589, type: 3}
+  - {fileID: -5810479577579435400, guid: f74ebbc67b54ff542976a6044858fdb4, type: 3}
+  - {fileID: -6684746388004678339, guid: d05b63db4c7c68443b322f04cd0831fa, type: 3}
+  - {fileID: -8287435652899193867, guid: 6e3e222a03e936b4a9f0fda8861a5e7f, type: 3}
+  - {fileID: 5491031552042795472, guid: 09e876a5bf370744eaad5b77d33ac55f, type: 3}
+  - {fileID: 1289819246774858112, guid: 1cc96dacccce54944bdd28fb0caf0a5c, type: 3}
+  - {fileID: -2805470629834331038, guid: e15cadfcbe324034f9cbf07b9d7d84c6, type: 3}
+  - {fileID: 7844544522392942361, guid: 83911b7b8242b9945a6d75e8d0f16ffe, type: 3}
+  - {fileID: -2172623076040968414, guid: 6ccd80d373267384da3ea412a160600e, type: 3}
+  - {fileID: -2151317202898395211, guid: 28cf3b090c5bf4047b6caefac0cb40a8, type: 3}
+  tamanoMinimo: 0.8
+  tamanoMaximo: 2
+  cantidadTamanos: 5
   epsilon: 0.3
   epsilonMinimo: 0.01
   factorDecaimiento: 0.85
-  rondaMinimaAntesDeEliminar: 5
-  margenEliminacion: 2
+  intentosMinimosParaDescartar: 3
+  margenDescarte: 0.4
 --- !u!212 &3412377301582622818
 SpriteRenderer:
   serializedVersion: 3
@@ -153,4 +165,4 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.45
